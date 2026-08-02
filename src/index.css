@@ -245,8 +245,8 @@ tr.rowlink:hover { background:var(--accent-soft); }
    LOGIN
 ============================================================ */
 .login-wrap { min-height:100vh; min-height:100dvh; display:grid; grid-template-columns:1.1fr 1fr; }
-.login-art { background:var(--brand); position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; padding:3rem; }
-.login-art::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse at 30% 20%, rgba(201,169,97,.22), transparent 55%), radial-gradient(ellipse at 70% 80%, rgba(201,169,97,.12), transparent 50%); }
+.login-art { background:#0A1530; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; padding:3rem; }
+.login-art::before { content:''; position:absolute; inset:0; background:radial-gradient(ellipse at 30% 20%, rgba(201,169,97,.28), transparent 55%), radial-gradient(ellipse at 70% 80%, rgba(201,169,97,.14), transparent 50%); }
 .login-art-inner { position:relative; z-index:2; text-align:center; color:#fff; max-width:420px; }
 .login-art img { width:96px; height:96px; margin:0 auto 1.75rem; filter:drop-shadow(0 8px 24px rgba(0,0,0,.3)); }
 .login-art img.login-lockup { width:auto; height:auto; max-width:280px; max-height:230px; }
