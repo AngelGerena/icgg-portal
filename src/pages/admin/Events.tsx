@@ -21,6 +21,20 @@ export function Events() {
   }
   useEffect(() => { load(); }, []);
 
+  async function handleDelete(ev: EventRow) {
+    const title = pick(ev, 'title', lang as any) || (lang === 'es' ? 'este evento' : 'this event');
+    const ok = window.confirm(
+      lang === 'es'
+        ? `¿Eliminar "${title}"? Esta acción no se puede deshacer.`
+        : `Delete "${title}"? This cannot be undone.`
+    );
+    if (!ok) return;
+    const { error } = await supabase.from('events').delete().eq('id', ev.id);
+    if (error) { push(error.message, 'err'); return; }
+    push(lang === 'es' ? 'Evento eliminado' : 'Event deleted', 'ok');
+    load();
+  }
+
   return (
     <>
       <div className="view-head">
@@ -40,7 +54,7 @@ export function Events() {
         : rows.length === 0 ? <Empty icon="events" title={t('empty.events')} sub={t('empty.events.sub')} />
         : calMode ? <CalendarView rows={rows} lang={lang} onPick={setEditing} />
         : <div className="grid g3">{rows.map(e => (
-            <EventCard key={e.id} e={e} lang={lang} t={t} onEdit={() => setEditing(e)} onShare={() => setSharing(e)} />
+            <EventCard key={e.id} e={e} lang={lang} t={t} onEdit={() => setEditing(e)} onShare={() => setSharing(e)} onDelete={() => handleDelete(e)} />
           ))}</div>}
 
       {editing && <EventEditor row={editing} lang={lang} t={t}
@@ -61,7 +75,7 @@ function fmtDate(d: string | null, lang: string) {
   return `${+day} ${mo} ${y}`;
 }
 
-function EventCard({ e, lang, t, onEdit, onShare }: { e: EventRow; lang: string; t: (k: string) => string; onEdit: () => void; onShare: () => void }) {
+function EventCard({ e, lang, t, onEdit, onShare, onDelete }: { e: EventRow; lang: string; t: (k: string) => string; onEdit: () => void; onShare: () => void; onDelete: () => void }) {
   const title = pick(e, 'title', lang as any);
   const desc = lang === 'en' ? (e.description_en ?? e.description) : e.description;
   const flyer = e.flyer_url || 'https://images.unsplash.com/photo-1519452575417-564c1401ecc0?w=600&q=80&auto=format&fit=crop';
@@ -79,6 +93,14 @@ function EventCard({ e, lang, t, onEdit, onShare }: { e: EventRow; lang: string;
         <div className="ev-actions">
           <button className="btn accent sm" onClick={onShare}><Icon name="share" size={14} />{t('share')}</button>
           <button className="btn ghost sm" onClick={onEdit}><Icon name="edit" size={14} />{t('edit')}</button>
+          <button
+            className="btn ghost sm ev-delete"
+            onClick={onDelete}
+            title={lang === 'es' ? 'Eliminar evento' : 'Delete event'}
+            aria-label={lang === 'es' ? 'Eliminar evento' : 'Delete event'}
+          >
+            <Icon name="trash" size={14} />
+          </button>
         </div>
       </div>
     </div>
@@ -131,12 +153,36 @@ function EventEditor({ row, lang, t, onClose, onSaved }: {
     flyer_url: e?.flyer_url ?? '', featured: e?.featured ?? false,
   });
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const set = (k: string, v: any) => setF(p => ({ ...p, [k]: v }));
+
+  async function uploadFlyer(file: File) {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      onSaved(lang === 'es' ? 'El archivo debe ser una imagen' : 'File must be an image');
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `flyers/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('event-flyers')
+        .upload(path, file, { cacheControl: '3600', upsert: false });
+      if (upErr) { onSaved(upErr.message); setUploading(false); return; }
+      const { data } = supabase.storage.from('event-flyers').getPublicUrl(path);
+      set('flyer_url', data.publicUrl);
+    } catch (err: any) {
+      onSaved(err?.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function save(status: 'draft' | 'published') {
     if (!f.title_es.trim()) { return; }
     setBusy(true);
-    const payload = { ...f, status, time_start: f.time_start || null, date: f.date || null };
+    const payload = { ...f, status, is_active: status === 'published', time_start: f.time_start || null, date: f.date || null };
     const res = isNew
       ? await supabase.from('events').insert(payload)
       : await supabase.from('events').update(payload).eq('id', e!.id);
@@ -156,7 +202,37 @@ function EventEditor({ row, lang, t, onClose, onSaved }: {
         <button className="btn ghost" disabled={busy} onClick={() => save('draft')}>{lang === 'es' ? 'Guardar borrador' : 'Save draft'}</button>
         <button className="btn accent" disabled={busy} onClick={() => save('published')}>{busy ? <span className="spin" style={{ width: 14, height: 14 }} /> : t('publish')}</button>
       </>}>
-      <label>{lang === 'es' ? 'URL del flyer' : 'Flyer URL'}</label>
+      <label>{lang === 'es' ? 'Flyer del evento' : 'Event flyer'}</label>
+      <label
+        className="ev-uploadzone"
+        onDragOver={ev => { ev.preventDefault(); }}
+        onDrop={ev => { ev.preventDefault(); const file = ev.dataTransfer.files?.[0]; if (file) uploadFlyer(file); }}
+        style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          gap: '.4rem', padding: '1.4rem', border: '2px dashed var(--line, #cbb98f)', borderRadius: 12,
+          cursor: 'pointer', textAlign: 'center', background: 'rgba(201,169,97,0.06)', marginBottom: '.6rem'
+        }}
+      >
+        <input
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={ev => { const file = ev.target.files?.[0]; if (file) uploadFlyer(file); }}
+        />
+        {uploading
+          ? <span className="spin" style={{ width: 18, height: 18 }} />
+          : <>
+              <Icon name="upload" size={22} />
+              <strong style={{ fontSize: '.9rem' }}>
+                {lang === 'es' ? 'Arrastra o haz clic para subir el flyer' : 'Drag or click to upload flyer'}
+              </strong>
+              <span style={{ fontSize: '.75rem', opacity: .7 }}>
+                {lang === 'es' ? 'JPG, PNG o WEBP' : 'JPG, PNG or WEBP'}
+              </span>
+            </>}
+      </label>
+
+      <label style={{ fontSize: '.8rem', opacity: .7 }}>{lang === 'es' ? 'O pega una URL' : 'Or paste a URL'}</label>
       <input value={f.flyer_url} onChange={ev => set('flyer_url', ev.target.value)} placeholder="https://…" />
       {f.flyer_url && <div style={{ marginTop: '.6rem', aspectRatio: '16/9', borderRadius: 10, backgroundImage: `url('${f.flyer_url}')`, backgroundSize: 'cover', backgroundPosition: 'center' }} />}
 

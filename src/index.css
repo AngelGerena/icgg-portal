@@ -273,6 +273,16 @@ tr.rowlink:hover { background:var(--accent-soft); }
 .brief p { font-family:'Cormorant Garamond', serif; font-size:1.3rem; line-height:1.5; position:relative; }
 .brief p b { color:var(--accent); font-weight:600; }
 
+/* Dark mode: the .brief card background is gold (--brand flips to gold),
+   so its text must be dark navy for contrast, not gold/white. */
+[data-theme="dark"] .brief { color:var(--brand-deep); }
+[data-theme="dark"] .brief p { color:#0A1530; }
+[data-theme="dark"] .brief p b { color:#0A1530; font-weight:700; }
+[data-theme="dark"] .brief .bh .eyebrow { color:#0A1530; }
+[data-theme="dark"] .brief .bh .eyebrow::before { background:#0A1530; opacity:.55; }
+[data-theme="dark"] .brief .bh svg { color:#0A1530; }
+[data-theme="dark"] .brief::after { background:radial-gradient(circle, rgba(10,21,48,.12), transparent 70%); }
+
 /* action row */
 .action-row { display:flex; align-items:center; gap:1rem; padding:1.15rem 1.25rem; }
 .action-ic { width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
@@ -417,4 +427,12 @@ tr.rowlink:hover { background:var(--accent-soft); }
 @media (min-width:981px) and (max-width:1240px) {
   .g4 { grid-template-columns:repeat(2,1fr); }
   .g3 { grid-template-columns:repeat(2,1fr); }
+}
+
+/* Event delete (trash) button — reads as destructive on hover */
+.ev-delete { padding-left: .55rem; padding-right: .55rem; }
+.ev-delete:hover {
+  background: rgba(220, 38, 38, 0.1) !important;
+  border-color: rgba(220, 38, 38, 0.4) !important;
+  color: #dc2626 !important;
 }

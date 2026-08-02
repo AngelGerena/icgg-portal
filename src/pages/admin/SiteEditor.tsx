@@ -39,6 +39,49 @@ export function SiteEditor() {
     load();
   }
 
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+
+  async function uploadImage(key: string, file: File) {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      push(lang === 'es' ? 'El archivo debe ser una imagen' : 'File must be an image', 'err');
+      return;
+    }
+    setUploadingKey(key);
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `${key}-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('site-images')
+        .upload(path, file, { cacheControl: '3600', upsert: true });
+      if (upErr) { push(upErr.message, 'err'); setUploadingKey(null); return; }
+      const { data } = supabase.storage.from('site-images').getPublicUrl(path);
+      const url = data.publicUrl;
+      // Store the same URL in both languages (an image is language-neutral).
+      const { error } = await supabase.from('site_content')
+        .update({ value_es: url, value_en: url }).eq('key', key);
+      if (error) { push(error.message, 'err'); setUploadingKey(null); return; }
+      push(lang === 'es' ? 'Imagen actualizada' : 'Image updated', 'ok');
+      load();
+    } catch (err: any) {
+      push(err?.message || 'Upload failed', 'err');
+    } finally {
+      setUploadingKey(null);
+    }
+  }
+
+  async function clearImage(key: string) {
+    const ok = window.confirm(lang === 'es'
+      ? '¿Restaurar la imagen original del sitio?'
+      : 'Restore the original site image?');
+    if (!ok) return;
+    const { error } = await supabase.from('site_content')
+      .update({ value_es: null, value_en: null }).eq('key', key);
+    if (error) { push(error.message, 'err'); return; }
+    push(lang === 'es' ? 'Imagen restaurada' : 'Image restored', 'ok');
+    load();
+  }
+
   if (!rows) return <div className="center-load"><div className="spin" /></div>;
 
   // group by section
@@ -66,6 +109,42 @@ export function SiteEditor() {
             const en = dirty[r.key]?.value_en ?? r.value_en ?? '';
             const isDirty = !!dirty[r.key];
             const Field = r.kind === 'longtext' ? 'textarea' : 'input';
+
+            if (r.kind === 'image') {
+              const currentUrl = r.value_es || r.value_en || '';
+              return (
+                <div key={r.key} style={{ marginBottom: '1.2rem', paddingBottom: '1.2rem', borderBottom: '1px solid var(--line-soft)' }}>
+                  <label style={{ marginTop: 0 }}>{r.label}{r.hint && <span className="muted" style={{ fontWeight: 400, marginLeft: '.4rem' }}>· {r.hint}</span>}</label>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: '.5rem' }}>
+                    <div style={{
+                      width: 110, height: 74, borderRadius: 8, flexShrink: 0,
+                      background: currentUrl ? `url('${currentUrl}') center/cover` : 'var(--line-soft)',
+                      border: '1px solid var(--line)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      {!currentUrl && <Icon name="upload" size={20} />}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                      <label className="btn sm" style={{ cursor: 'pointer', margin: 0 }}>
+                        {uploadingKey === r.key
+                          ? <span className="spin" style={{ width: 13, height: 13 }} />
+                          : <><Icon name="upload" size={13} />{currentUrl ? (lang === 'es' ? 'Cambiar imagen' : 'Change image') : (lang === 'es' ? 'Subir imagen' : 'Upload image')}</>}
+                        <input type="file" accept="image/*" style={{ display: 'none' }}
+                          onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(r.key, f); }} />
+                      </label>
+                      {currentUrl && (
+                        <button className="btn ghost sm" style={{ margin: 0 }} onClick={() => clearImage(r.key)}>
+                          {lang === 'es' ? 'Restaurar original' : 'Restore original'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <p className="muted" style={{ fontSize: '.75rem', marginTop: '.5rem' }}>
+                    {lang === 'es' ? 'Vacío = el sitio muestra la imagen original.' : 'Empty = the site shows its original image.'}
+                  </p>
+                </div>
+              );
+            }
             return (
               <div key={r.key} style={{ marginBottom: '1.2rem', paddingBottom: '1.2rem', borderBottom: '1px solid var(--line-soft)' }}>
                 <label style={{ marginTop: 0 }}>{r.label}{r.hint && <span className="muted" style={{ fontWeight: 400, marginLeft: '.4rem' }}>· {r.hint}</span>}</label>
