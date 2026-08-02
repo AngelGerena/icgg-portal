@@ -24,6 +24,18 @@ export function Sermons() {
     return new Intl.DateTimeFormat(lang === 'es' ? 'es' : 'en', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(d + 'T00:00'));
   }
 
+  async function del(s: SermonRow) {
+    const title = pick(s, 'title', lang as any);
+    const ok = window.confirm(lang === 'es'
+      ? `¿Eliminar la predicación “${title}”? Esta acción no se puede deshacer.`
+      : `Delete the sermon “${title}”? This can’t be undone.`);
+    if (!ok) return;
+    const { error } = await supabase.from('sermons').delete().eq('id', s.id);
+    if (error) { push(error.message, 'err'); return; }
+    setRows(prev => prev ? prev.filter(r => r.id !== s.id) : prev);
+    push(lang === 'es' ? 'Predicación eliminada' : 'Sermon deleted', 'ok');
+  }
+
   return (
     <>
       <div className="view-head">
@@ -45,6 +57,7 @@ export function Sermons() {
               <th>{lang === 'es' ? 'Versículo' : 'Verse'}</th>
               <th>{lang === 'es' ? 'Fecha' : 'Date'}</th>
               <th></th>
+              <th></th>
             </tr></thead>
             <tbody>
               {rows.map(s => (
@@ -54,6 +67,13 @@ export function Sermons() {
                   <td style={{ fontStyle: 'italic', color: 'var(--accent-deep)' }}>{s.verse}</td>
                   <td>{fmtDate(s.preached_on)}</td>
                   <td><span className={`chip ${s.status === 'published' ? 'ok' : 'warn'}`}><span className="dot" />{s.status === 'published' ? t('published') : t('draft')}</span></td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button className="row-del" aria-label={lang === 'es' ? 'Eliminar' : 'Delete'}
+                      title={lang === 'es' ? 'Eliminar' : 'Delete'}
+                      onClick={e => { e.stopPropagation(); del(s); }}>
+                      <Icon name="trash" size={16} stroke={1.8} />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
