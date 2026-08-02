@@ -4,6 +4,7 @@ import { useLang } from '../../lib/providers';
 import { useToast } from '../../components/UI';
 import { Icon } from '../../components/Icon';
 import type { SiteContentRow } from '../../lib/types';
+import { defaultImageFor } from '../../lib/imageDefaults';
 
 export function SiteEditor() {
   const { lang } = useLang();
@@ -111,37 +112,49 @@ export function SiteEditor() {
             const Field = r.kind === 'longtext' ? 'textarea' : 'input';
 
             if (r.kind === 'image') {
-              const currentUrl = r.value_es || r.value_en || '';
+              const customUrl = r.value_es || r.value_en || '';
+              const defaultUrl = defaultImageFor(r.key);
+              const shownUrl = customUrl || defaultUrl;      // what's live on the site right now
+              const isCustom = !!customUrl;
               return (
-                <div key={r.key} style={{ marginBottom: '1.2rem', paddingBottom: '1.2rem', borderBottom: '1px solid var(--line-soft)' }}>
+                <div key={r.key} style={{ marginBottom: '1.4rem', paddingBottom: '1.4rem', borderBottom: '1px solid var(--line-soft)' }}>
                   <label style={{ marginTop: 0 }}>{r.label}{r.hint && <span className="muted" style={{ fontWeight: 400, marginLeft: '.4rem' }}>· {r.hint}</span>}</label>
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: '.5rem' }}>
-                    <div style={{
-                      width: 110, height: 74, borderRadius: 8, flexShrink: 0,
-                      background: currentUrl ? `url('${currentUrl}') center/cover` : 'var(--line-soft)',
-                      border: '1px solid var(--line)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>
-                      {!currentUrl && <Icon name="upload" size={20} />}
+                  <div style={{ display: 'flex', gap: '1.1rem', alignItems: 'flex-start', marginTop: '.6rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '.35rem', flexShrink: 0 }}>
+                      <div style={{
+                        width: 150, height: 100, borderRadius: 10,
+                        background: shownUrl ? `#0d1b30 url('${shownUrl}') center/cover no-repeat` : 'var(--line-soft)',
+                        border: '1px solid var(--line)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}>
+                        {!shownUrl && <Icon name="upload" size={22} />}
+                      </div>
+                      <span className="muted" style={{ fontSize: '.68rem', textAlign: 'center' }}>
+                        {isCustom
+                          ? (lang === 'es' ? 'Imagen personalizada' : 'Custom image')
+                          : (lang === 'es' ? 'Imagen actual del sitio' : 'Current site image')}
+                      </span>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
-                      <label className="btn sm" style={{ cursor: 'pointer', margin: 0 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '.55rem', flex: 1, minWidth: 160 }}>
+                      <label className="btn sm" style={{ cursor: 'pointer', margin: 0, alignSelf: 'flex-start' }}>
                         {uploadingKey === r.key
                           ? <span className="spin" style={{ width: 13, height: 13 }} />
-                          : <><Icon name="upload" size={13} />{currentUrl ? (lang === 'es' ? 'Cambiar imagen' : 'Change image') : (lang === 'es' ? 'Subir imagen' : 'Upload image')}</>}
+                          : <><Icon name="upload" size={13} />{lang === 'es' ? 'Subir imagen nueva' : 'Upload new image'}</>}
                         <input type="file" accept="image/*" style={{ display: 'none' }}
                           onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(r.key, f); }} />
                       </label>
-                      {currentUrl && (
-                        <button className="btn ghost sm" style={{ margin: 0 }} onClick={() => clearImage(r.key)}>
-                          {lang === 'es' ? 'Restaurar original' : 'Restore original'}
+                      {isCustom && (
+                        <button className="btn ghost sm" style={{ margin: 0, alignSelf: 'flex-start' }} onClick={() => clearImage(r.key)}>
+                          {lang === 'es' ? 'Restaurar imagen original' : 'Restore original image'}
                         </button>
                       )}
+                      <p className="muted" style={{ fontSize: '.72rem', margin: '.15rem 0 0', lineHeight: 1.5 }}>
+                        {isCustom
+                          ? (lang === 'es' ? 'Estás mostrando una imagen personalizada. Puedes subir otra o restaurar la original.' : 'You are showing a custom image. Upload another or restore the original.')
+                          : (lang === 'es' ? 'Esta es la imagen que aparece en el sitio. Sube una nueva para reemplazarla.' : 'This is the image currently on the site. Upload a new one to replace it.')}
+                      </p>
                     </div>
                   </div>
-                  <p className="muted" style={{ fontSize: '.75rem', marginTop: '.5rem' }}>
-                    {lang === 'es' ? 'Vacío = el sitio muestra la imagen original.' : 'Empty = the site shows its original image.'}
-                  </p>
                 </div>
               );
             }
