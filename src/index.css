@@ -436,3 +436,40 @@ tr.rowlink:hover { background:var(--accent-soft); }
   border-color: rgba(220, 38, 38, 0.4) !important;
   color: #dc2626 !important;
 }
+
+/* ============================================================
+   MOBILE POLISH — comfortable tap targets for iPhone editing.
+   Desktop sizes are untouched; these only fire on phone widths.
+   iOS/Apple guideline: interactive targets >= 44px.
+   ============================================================ */
+@media (max-width: 720px) {
+  /* Primary + small buttons: taller, easier to thumb */
+  .btn { padding: .85rem 1.25rem; font-size: .9rem; min-height: 46px; }
+  .btn.sm { padding: .7rem 1.05rem; font-size: .82rem; min-height: 42px; }
+
+  /* Round icon buttons (top bar, close, etc.) */
+  .icon-btn { width: 44px; height: 44px; }
+  .modal-head .x { width: 42px; height: 42px; }
+
+  /* Form inputs: bigger hit area + 16px font stops iOS auto-zoom on focus */
+  input, textarea, select {
+    min-height: 48px;
+    font-size: 16px !important;
+  }
+  textarea { min-height: 96px; }
+
+  /* Labels a touch larger for readability */
+  label { font-size: .9rem; }
+
+  /* Modal footer buttons already go full-width; make them tall too */
+  .modal-foot .btn { min-height: 50px; font-size: .95rem; }
+
+  /* File-upload label (cover art) reads as a real button on mobile */
+  label.btn { min-height: 46px; }
+
+  /* Chips/tags slightly larger so status is legible on small screens */
+  .chip { font-size: .72rem; padding: .3rem .7rem; }
+
+  /* Give tappable table rows / list items more vertical breathing room */
+  table td, table th { padding-top: .9rem; padding-bottom: .9rem; }
+}
