@@ -5,6 +5,7 @@ import { useT, pick } from '../../lib/i18n';
 import { useToast, Modal, Empty } from '../../components/UI';
 import { Icon } from '../../components/Icon';
 import type { EventRow } from '../../lib/types';
+import { logActivity, trashRecord } from '../../lib/activity';
 
 export function Events() {
   const { lang } = useLang();
@@ -25,13 +26,19 @@ export function Events() {
     const title = pick(ev, 'title', lang as any) || (lang === 'es' ? 'este evento' : 'this event');
     const ok = window.confirm(
       lang === 'es'
-        ? `¿Eliminar "${title}"? Esta acción no se puede deshacer.`
-        : `Delete "${title}"? This cannot be undone.`
+        ? `¿Eliminar "${title}"? Podrás restaurarlo desde la papelera en el Registro de actividad.`
+        : `Delete "${title}"? You can restore it from the trash in the Activity Log.`
     );
     if (!ok) return;
+    // Keep a recoverable copy before deleting
+    await trashRecord('events', ev.id, title, ev as any);
     const { error } = await supabase.from('events').delete().eq('id', ev.id);
     if (error) { push(error.message, 'err'); return; }
-    push(lang === 'es' ? 'Evento eliminado' : 'Event deleted', 'ok');
+    await logActivity(
+      lang === 'es' ? `Eliminó el evento: ${title}` : `Deleted event: ${title}`,
+      'Events', ev.id
+    );
+    push(lang === 'es' ? 'Evento eliminado (recuperable)' : 'Event deleted (recoverable)', 'ok');
     load();
   }
 
@@ -188,6 +195,13 @@ function EventEditor({ row, lang, t, onClose, onSaved }: {
       : await supabase.from('events').update(payload).eq('id', e!.id);
     setBusy(false);
     if (res.error) { onSaved(res.error.message); return; }
+    const title = f.title_es || 'evento';
+    await logActivity(
+      isNew
+        ? (lang === 'es' ? `Creó el evento: ${title} (${status === 'published' ? 'publicado' : 'borrador'})` : `Created event: ${title} (${status})`)
+        : (lang === 'es' ? `Editó el evento: ${title} (${status === 'published' ? 'publicado' : 'borrador'})` : `Edited event: ${title} (${status})`),
+      'Events', e?.id
+    );
     onSaved(status === 'published'
       ? (lang === 'es' ? 'Evento publicado' : 'Event published')
       : (lang === 'es' ? 'Borrador guardado' : 'Draft saved'));

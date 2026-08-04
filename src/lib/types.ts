@@ -47,6 +47,7 @@ export interface SermonRow {
   preached_on: string | null;
   minutes: number | null;
   video_url: string | null;
+  cover_url: string | null;
   audio_url: string | null;
   status: 'draft' | 'published';
 }

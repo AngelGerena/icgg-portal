@@ -5,6 +5,7 @@ import { useToast } from '../../components/UI';
 import { Icon } from '../../components/Icon';
 import type { SiteContentRow } from '../../lib/types';
 import { defaultImageFor } from '../../lib/imageDefaults';
+import { logActivity } from '../../lib/activity';
 
 export function SiteEditor() {
   const { lang } = useLang();
@@ -36,6 +37,7 @@ export function SiteEditor() {
     setSaving(null);
     if (error) { push(error.message, 'err'); return; }
     setDirty(x => { const n = { ...x }; delete n[key]; return n; });
+    await logActivity(lang === 'es' ? `Editó el contenido: ${key}` : `Edited content: ${key}`, 'Site Editor', key);
     push(lang === 'es' ? 'Cambios guardados' : 'Changes saved', 'ok');
     load();
   }
@@ -62,6 +64,7 @@ export function SiteEditor() {
       const { error } = await supabase.from('site_content')
         .update({ value_es: url, value_en: url }).eq('key', key);
       if (error) { push(error.message, 'err'); setUploadingKey(null); return; }
+      await logActivity(lang === 'es' ? `Cambió la imagen: ${key}` : `Changed image: ${key}`, 'Images', key);
       push(lang === 'es' ? 'Imagen actualizada' : 'Image updated', 'ok');
       load();
     } catch (err: any) {
@@ -79,6 +82,7 @@ export function SiteEditor() {
     const { error } = await supabase.from('site_content')
       .update({ value_es: null, value_en: null }).eq('key', key);
     if (error) { push(error.message, 'err'); return; }
+    await logActivity(lang === 'es' ? `Restauró la imagen original: ${key}` : `Restored original image: ${key}`, 'Images', key);
     push(lang === 'es' ? 'Imagen restaurada' : 'Image restored', 'ok');
     load();
   }

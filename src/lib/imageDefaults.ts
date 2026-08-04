@@ -15,7 +15,7 @@ const raw: Record<string, string> = {
   hero_slide_3: 'https://www.dropbox.com/scl/fi/gbb3lkzcqrn7pwz424ryo/ICCG-11-19-53-of-135.jpg?rlkey=5mr4eaq0w91l9odc1cwt5trpy&st=45emqolf&raw=1',
   hero_slide_4: '/2.jpg',
   hero_slide_5: '/3.jpg',
-  about_image: '/feetwash.jpg',
+  about_image: '/nuestra-mision.jpg',
   newcomers_greeter: '/greeter.png',
   newcomers_worship: '/nora.JPG',
   newcomers_community: '/Community_outreach_in_action_with_joy.png',

@@ -24,18 +24,6 @@ export function Sermons() {
     return new Intl.DateTimeFormat(lang === 'es' ? 'es' : 'en', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(d + 'T00:00'));
   }
 
-  async function del(s: SermonRow) {
-    const title = pick(s, 'title', lang as any);
-    const ok = window.confirm(lang === 'es'
-      ? `¿Eliminar la predicación “${title}”? Esta acción no se puede deshacer.`
-      : `Delete the sermon “${title}”? This can’t be undone.`);
-    if (!ok) return;
-    const { error } = await supabase.from('sermons').delete().eq('id', s.id);
-    if (error) { push(error.message, 'err'); return; }
-    setRows(prev => prev ? prev.filter(r => r.id !== s.id) : prev);
-    push(lang === 'es' ? 'Predicación eliminada' : 'Sermon deleted', 'ok');
-  }
-
   return (
     <>
       <div className="view-head">
@@ -57,7 +45,6 @@ export function Sermons() {
               <th>{lang === 'es' ? 'Versículo' : 'Verse'}</th>
               <th>{lang === 'es' ? 'Fecha' : 'Date'}</th>
               <th></th>
-              <th></th>
             </tr></thead>
             <tbody>
               {rows.map(s => (
@@ -67,13 +54,6 @@ export function Sermons() {
                   <td style={{ fontStyle: 'italic', color: 'var(--accent-deep)' }}>{s.verse}</td>
                   <td>{fmtDate(s.preached_on)}</td>
                   <td><span className={`chip ${s.status === 'published' ? 'ok' : 'warn'}`}><span className="dot" />{s.status === 'published' ? t('published') : t('draft')}</span></td>
-                  <td style={{ textAlign: 'right' }}>
-                    <button className="row-del" aria-label={lang === 'es' ? 'Eliminar' : 'Delete'}
-                      title={lang === 'es' ? 'Eliminar' : 'Delete'}
-                      onClick={e => { e.stopPropagation(); del(s); }}>
-                      <Icon name="trash" size={16} stroke={1.8} />
-                    </button>
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -96,9 +76,29 @@ function SermonEditor({ row, lang, t, onClose, onSaved }: {
     title_es: s?.title_es ?? '', title_en: s?.title_en ?? '', series: s?.series ?? '',
     verse: s?.verse ?? '', speaker: s?.speaker ?? 'Pastora Irene Familia',
     preached_on: s?.preached_on ?? '', minutes: s?.minutes ?? '', video_url: s?.video_url ?? '',
+    cover_url: s?.cover_url ?? '',
   });
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const set = (k: string, v: any) => setF(p => ({ ...p, [k]: v }));
+
+  async function uploadCover(file: File) {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `cover-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('sermon-covers')
+        .upload(path, file, { cacheControl: '3600', upsert: true });
+      if (upErr) { setUploading(false); return; }
+      const { data } = supabase.storage.from('sermon-covers').getPublicUrl(path);
+      set('cover_url', data.publicUrl);
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function save() {
     if (!f.title_es.trim()) return;
@@ -129,6 +129,39 @@ function SermonEditor({ row, lang, t, onClose, onSaved }: {
       </div>
       <label>{lang === 'es' ? 'Enlace de video (Facebook/YouTube)' : 'Video link (Facebook/YouTube)'}</label>
       <input value={f.video_url} onChange={e => set('video_url', e.target.value)} placeholder="https://…" />
+
+      <label style={{ marginTop: '1rem' }}>{lang === 'es' ? 'Imagen de portada' : 'Cover image'}</label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{
+          width: 88, height: 88, flexShrink: 0, borderRadius: 10, overflow: 'hidden',
+          background: 'rgba(20,38,75,.06)', border: '1px solid rgba(20,38,75,.12)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          {f.cover_url
+            ? <img src={f.cover_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : <Icon name="media" size={22} />}
+        </div>
+        <div style={{ flex: 1 }}>
+          <label className="btn ghost sm" style={{ cursor: 'pointer', display: 'inline-flex' }}>
+            {uploading
+              ? <span className="spin" style={{ width: 13, height: 13 }} />
+              : (lang === 'es' ? 'Subir portada' : 'Upload cover')}
+            <input type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadCover(file); }} />
+          </label>
+          {f.cover_url && (
+            <button type="button" className="btn ghost sm" style={{ marginLeft: '.5rem' }}
+              onClick={() => set('cover_url', '')}>
+              {lang === 'es' ? 'Quitar' : 'Remove'}
+            </button>
+          )}
+          <div className="muted" style={{ fontSize: '.72rem', marginTop: '.4rem' }}>
+            {lang === 'es'
+              ? 'Cualquier forma de imagen funciona. Se mostrará tal como la subas.'
+              : 'Any image shape works. It displays exactly as you upload it.'}
+          </div>
+        </div>
+      </div>
     </Modal>
   );
 }
