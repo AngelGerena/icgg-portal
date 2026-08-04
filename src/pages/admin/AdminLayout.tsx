@@ -20,7 +20,7 @@ import { AuditLog } from './AuditLog';
 
 const NAV = [
   { label: 'nav.main', items: [['today', 'today'], ['inbox', 'inbox'], ['prayer', 'prayer']] },
-  { label: 'nav.content', items: [['site', 'site'], ['events', 'events'], ['media', 'media'], ['sermons', 'sermons'], ['podcast', 'sermons']] },
+  { label: 'nav.content', items: [['site', 'site'], ['events', 'events'], ['media', 'media'], ['sermons', 'sermons'], ['podcast', 'podcast']] },
   { label: 'nav.intelligence', items: [['ai', 'ai'], ['autopilot', 'autopilot']] },
   { label: 'nav.system', items: [['settings', 'settings'], ['audit', 'audit']] },
 ] as const;
