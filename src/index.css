@@ -493,3 +493,20 @@ tr.rowlink:hover { background:var(--accent-soft); }
   .mediapick-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
   .mediapick-search { font-size: 16px; }
 }
+
+/* ===== Media Library: delete button on each image ===== */
+.media-thumb { position: relative; }
+.media-del {
+  position: absolute; top: .5rem; right: .5rem;
+  width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(10,21,48,.65); border: none; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; opacity: 0; transition: opacity .15s, background .15s;
+}
+.media-item:hover .media-del { opacity: 1; }
+.media-del:hover { background: var(--danger, #c0392b); }
+.media-del:disabled { opacity: 1; cursor: default; }
+/* On touch devices there's no hover, so always show the delete button */
+@media (hover: none), (max-width: 720px) {
+  .media-del { opacity: 1; width: 40px; height: 40px; }
+}

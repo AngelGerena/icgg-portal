@@ -39,6 +39,54 @@ export function MediaLibrary() {
     return b > 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.round(b / 1e3) + ' KB';
   }
 
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  async function handleDelete(m: MediaRow) {
+    if (!m.url) return;
+    setDeleting(m.id);
+    try {
+      // Safety check: is this image used by any event or sermon right now?
+      const [ev, se] = await Promise.all([
+        supabase.from('events').select('id', { count: 'exact', head: true }).eq('flyer_url', m.url),
+        supabase.from('sermons').select('id', { count: 'exact', head: true }).eq('cover_url', m.url),
+      ]);
+      const evCount = ev.count ?? 0;
+      const seCount = se.count ?? 0;
+      const inUse = evCount + seCount;
+
+      let ok: boolean;
+      if (inUse > 0) {
+        const parts: string[] = [];
+        if (evCount > 0) parts.push(lang === 'es' ? `${evCount} evento(s)` : `${evCount} event(s)`);
+        if (seCount > 0) parts.push(lang === 'es' ? `${seCount} predicación(es)` : `${seCount} sermon(s)`);
+        const usedBy = parts.join(lang === 'es' ? ' y ' : ' and ');
+        ok = window.confirm(
+          lang === 'es'
+            ? `ADVERTENCIA: Esta imagen la usa ${usedBy}. Si la eliminas, esos elementos se quedarán SIN imagen (se verán en blanco). ¿Eliminar de todas formas?`
+            : `WARNING: This image is used by ${usedBy}. Deleting it will leave those items WITHOUT an image (they'll show blank). Delete anyway?`
+        );
+      } else {
+        ok = window.confirm(
+          lang === 'es'
+            ? `¿Eliminar "${m.name}"? No se usa en ningún evento ni predicación.`
+            : `Delete "${m.name}"? It isn't used by any event or sermon.`
+        );
+      }
+      if (!ok) { setDeleting(null); return; }
+
+      // Remove the actual file from storage, then the library record
+      if (m.path) await supabase.storage.from('media').remove([m.path]);
+      const { error } = await supabase.from('media').delete().eq('id', m.id);
+      if (error) { push(error.message, 'err'); setDeleting(null); return; }
+      push(lang === 'es' ? 'Imagen eliminada' : 'Image deleted', 'ok');
+      load();
+    } catch (err: any) {
+      push(err?.message || 'Delete failed', 'err');
+    } finally {
+      setDeleting(null);
+    }
+  }
+
   return (
     <>
       <div className="view-head">
@@ -62,6 +110,15 @@ export function MediaLibrary() {
             <div key={m.id} className="card media-item">
               <div className="media-thumb" style={{ backgroundImage: m.url ? `url('${m.url}')` : 'none' }}>
                 {m.tag && <span className="chip gold" style={{ position: 'absolute', top: '.5rem', left: '.5rem' }}>{m.tag}</span>}
+                <button
+                  className="media-del"
+                  onClick={() => handleDelete(m)}
+                  disabled={deleting === m.id}
+                  title={lang === 'es' ? 'Eliminar' : 'Delete'}
+                  aria-label={lang === 'es' ? 'Eliminar' : 'Delete'}
+                >
+                  {deleting === m.id ? <span className="spin" style={{ width: 13, height: 13 }} /> : <Icon name="trash" size={14} />}
+                </button>
               </div>
               <div className="media-info">
                 <div className="mn">{m.name}</div>
