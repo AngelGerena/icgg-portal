@@ -8,6 +8,7 @@ import { Icon } from '../../components/Icon';
 import { Today } from './Today';
 import { Events } from './Events';
 import { BlogStudio } from './BlogStudio';
+import { Podcast } from './Podcast';
 import { Autopilot } from './Autopilot';
 import { SiteEditor } from './SiteEditor';
 import { MediaLibrary } from './MediaLibrary';
@@ -19,7 +20,7 @@ import { AuditLog } from './AuditLog';
 
 const NAV = [
   { label: 'nav.main', items: [['today', 'today'], ['inbox', 'inbox'], ['prayer', 'prayer']] },
-  { label: 'nav.content', items: [['site', 'site'], ['events', 'events'], ['media', 'media'], ['sermons', 'sermons']] },
+  { label: 'nav.content', items: [['site', 'site'], ['events', 'events'], ['media', 'media'], ['sermons', 'sermons'], ['podcast', 'sermons']] },
   { label: 'nav.intelligence', items: [['ai', 'ai'], ['autopilot', 'autopilot']] },
   { label: 'nav.system', items: [['settings', 'settings'], ['audit', 'audit']] },
 ] as const;
@@ -131,6 +132,7 @@ export function AdminLayout() {
             <Route path="/site" element={<SiteEditor />} />
             <Route path="/media" element={<MediaLibrary />} />
             <Route path="/sermons" element={<Sermons />} />
+            <Route path="/podcast" element={<Podcast />} />
             <Route path="/prayer" element={<Prayer />} />
             <Route path="/inbox" element={<Inbox />} />
             <Route path="/settings" element={<Settings />} />

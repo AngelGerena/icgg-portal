@@ -168,3 +168,21 @@ export interface BlogPostRow {
   created_at: string;
   updated_at: string;
 }
+
+export interface EpisodeRow {
+  id: string;
+  episode_no: number | null;
+  title_es: string;
+  title_en: string | null;
+  description_es: string | null;
+  description_en: string | null;
+  guest: string | null;
+  host: string | null;
+  published_on: string | null;
+  minutes: number | null;
+  video_url: string | null;
+  cover_url: string | null;
+  status: 'draft' | 'published';
+  created_at: string;
+  updated_at: string;
+}

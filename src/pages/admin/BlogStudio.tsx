@@ -58,7 +58,7 @@ export function BlogStudio() {
       <div className="view-head">
         <div>
           <span className="eyebrow">{lang === 'es' ? 'Escritura con IA' : 'AI-assisted writing'}</span>
-          <div className="sec-title">{lang === 'es' ? 'Contra la Corriente' : 'Against the Current'}</div>
+          <div className="sec-title">{lang === 'es' ? 'Contra Corriente' : 'Against the Current'}</div>
         </div>
         <div className="vh-actions">
           <button className="btn ghost" onClick={() => { setPrefill(null); setEditing('new'); }}>

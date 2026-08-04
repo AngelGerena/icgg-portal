@@ -151,7 +151,7 @@ export function Today() {
             btn={lang === 'es' ? 'Revisar' : 'Review'} go={() => nav('/autopilot')} />}
           {s.draftPosts > 0 && <Action ic="ai" color="info"
             title={lang === 'es' ? `${s.draftPosts} entradas en borrador` : `${s.draftPosts} posts in draft`}
-            desc={lang === 'es' ? 'Termínalas y publícalas en Contra la Corriente.' : 'Finish them and publish to Against the Current.'}
+            desc={lang === 'es' ? 'Termínalas y publícalas en Contra Corriente.' : 'Finish them and publish to Against the Current.'}
             btn={lang === 'es' ? 'Abrir estudio' : 'Open studio'} go={() => nav('/ai')} />}
           {s.draftEvents > 0 && <Action ic="events" color="info"
             title={lang === 'es' ? `${s.draftEvents} evento en borrador` : `${s.draftEvents} event in draft`}
