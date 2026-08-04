@@ -16,7 +16,7 @@ export const STR: Dict = {
   'events': { es: 'Eventos', en: 'Events' },
   'media': { es: 'Biblioteca de Medios', en: 'Media Library' },
   'sermons': { es: 'Predicaciones', en: 'Sermons' },
-  'ai': { es: 'Estudio del Blog', en: 'Blog Studio' },
+  'ai': { es: 'Contra la Corriente', en: 'Against the Current' },
   'autopilot': { es: 'Piloto Automático', en: 'Autopilot' },
   'settings': { es: 'Ajustes', en: 'Settings' },
   'audit': { es: 'Registro de Actividad', en: 'Activity Log' },

@@ -67,6 +67,7 @@ export interface MessageRow {
   id: string;
   name: string;
   email: string | null;
+  phone: string | null;
   subject: string | null;
   body: string;
   is_read: boolean;
@@ -114,32 +115,14 @@ export interface BusinessSettings {
   ai_enabled: boolean;
 }
 
-export type Channel = 'blog' | 'facebook' | 'instagram' | 'google_business';
-
-export interface ContentQueueRow {
+export interface TrashRow {
   id: string;
-  channel: Channel;
-  status: 'draft' | 'scheduled' | 'published' | 'cancelled' | 'failed';
-  source_kind: string | null;
-  source_id: string | null;
-  title: string | null;
-  body_en: string | null;
-  body_es: string | null;
-  meta_en: string | null;
-  meta_es: string | null;
-  publish_at: string | null;
-  published_at: string | null;
-  edit_distance: number | null;
-  created_at: string;
-}
-
-export interface AutopilotRow {
-  channel: Channel;
-  enabled: boolean;
-  approved_streak: number;
-  max_per_week: number;
-  review_window_hr: number;
-  quiet_until: string | null;
+  source_table: string;
+  record_id: string | null;
+  label: string | null;
+  payload: Record<string, any>;
+  deleted_by: string | null;
+  deleted_at: string;
 }
 
 export interface AuditRow {

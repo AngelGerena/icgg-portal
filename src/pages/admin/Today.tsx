@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../lib/providers';
@@ -6,7 +6,17 @@ import { useLang } from '../../lib/providers';
 import { useT } from '../../lib/i18n';
 import { Icon } from '../../components/Icon';
 
-interface Stats { unread: number; newPrayers: number; scheduled: number; liveEvents: number; draftEvents: number; }
+interface Stats {
+  unread: number;
+  newPrayers: number;
+  oldestPrayer: string | null;
+  scheduledPosts: number;
+  draftPosts: number;
+  liveEvents: number;
+  draftEvents: number;
+}
+
+const REFRESH_MS = 60_000;
 
 export function Today() {
   const { admin } = useAuth();
@@ -15,30 +25,62 @@ export function Today() {
   const nav = useNavigate();
   const [s, setS] = useState<Stats | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      const [unread, newPrayers, scheduled, liveEvents, draftEvents] = await Promise.all([
-        supabase.from('contact_messages').select('id', { count: 'exact', head: true }).eq('is_read', false),
-        supabase.from('prayer_requests').select('id', { count: 'exact', head: true }).eq('status', 'new'),
-        supabase.from('content_queue').select('id', { count: 'exact', head: true }).eq('status', 'scheduled'),
-        supabase.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published'),
-        supabase.from('events').select('id', { count: 'exact', head: true }).eq('status', 'draft'),
-      ]);
-      setS({
-        unread: unread.count ?? 0, newPrayers: newPrayers.count ?? 0,
-        scheduled: scheduled.count ?? 0, liveEvents: liveEvents.count ?? 0, draftEvents: draftEvents.count ?? 0,
-      });
-    })();
+  const load = useCallback(async () => {
+    const [unread, newPrayers, oldest, scheduledPosts, draftPosts, liveEvents, draftEvents] = await Promise.all([
+      supabase.from('contact_messages').select('id', { count: 'exact', head: true }).eq('is_read', false),
+      supabase.from('prayer_requests').select('id', { count: 'exact', head: true }).eq('status', 'new'),
+      supabase.from('prayer_requests').select('created_at').eq('status', 'new')
+        .order('created_at', { ascending: true }).limit(1).maybeSingle(),
+      supabase.from('blog_posts').select('id', { count: 'exact', head: true }).eq('status', 'scheduled'),
+      supabase.from('blog_posts').select('id', { count: 'exact', head: true }).eq('status', 'draft'),
+      supabase.from('events').select('id', { count: 'exact', head: true }).eq('status', 'published'),
+      supabase.from('events').select('id', { count: 'exact', head: true }).eq('status', 'draft'),
+    ]);
+    setS({
+      unread: unread.count ?? 0,
+      newPrayers: newPrayers.count ?? 0,
+      oldestPrayer: (oldest.data as { created_at: string } | null)?.created_at ?? null,
+      scheduledPosts: scheduledPosts.count ?? 0,
+      draftPosts: draftPosts.count ?? 0,
+      liveEvents: liveEvents.count ?? 0,
+      draftEvents: draftEvents.count ?? 0,
+    });
   }, []);
 
-  const name = (admin?.full_name || '').split(' ')[0] || 'Angel';
-  const hasActions = s && (s.unread > 0 || s.newPrayers > 0 || s.scheduled > 0 || s.draftEvents > 0);
+  // Poll while the tab is open. The media team leaves this on a screen all day,
+  // so a prayer request that arrives at 2pm should surface without a reload.
+  useEffect(() => {
+    load();
+    const id = setInterval(load, REFRESH_MS);
+    const onFocus = () => load();
+    window.addEventListener('focus', onFocus);
+    return () => { clearInterval(id); window.removeEventListener('focus', onFocus); };
+  }, [load]);
 
-  const brief = lang === 'es'
-    ? `${t('today.greeting')}, ${name}. Tienes <b>${s?.unread ?? 0} mensajes</b> sin leer y <b>${s?.newPrayers ?? 0} peticiones</b> de oración nuevas. Hay <b>${s?.scheduled ?? 0}</b> en cola de publicación y <b>${s?.draftEvents ?? 0} evento</b> en borrador.`
-    : `${t('today.greeting')}, ${name}. You have <b>${s?.unread ?? 0} unread messages</b> and <b>${s?.newPrayers ?? 0} new prayer requests</b>. There are <b>${s?.scheduled ?? 0}</b> in the publish queue and <b>${s?.draftEvents ?? 0} event</b> in draft.`;
+  /** How long the oldest unattended request has been waiting. */
+  function waitingFor(iso: string | null): string | null {
+    if (!iso) return null;
+    const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+    if (mins < 1) return lang === 'es' ? 'hace un momento' : 'just now';
+    if (mins < 60) return lang === 'es' ? `hace ${mins} min` : `${mins} min ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return lang === 'es' ? `hace ${hrs} h` : `${hrs} h ago`;
+    const days = Math.floor(hrs / 24);
+    return lang === 'es' ? `hace ${days} día${days > 1 ? 's' : ''}` : `${days} day${days > 1 ? 's' : ''} ago`;
+  }
+
+  const name = (admin?.full_name || '').split(' ')[0] || 'Angel';
 
   if (!s) return <div className="center-load"><div className="spin" /></div>;
+
+  const waiting = waitingFor(s.oldestPrayer);
+  // A request sitting more than 12 hours is escalated visually.
+  const stale = !!s.oldestPrayer && (Date.now() - new Date(s.oldestPrayer).getTime()) > 12 * 3600_000;
+  const hasActions = s.unread > 0 || s.newPrayers > 0 || s.scheduledPosts > 0 || s.draftPosts > 0 || s.draftEvents > 0;
+
+  const brief = lang === 'es'
+    ? `${t('today.greeting')}, ${name}. Tienes <b>${s.newPrayers} peticiones</b> de oración nuevas y <b>${s.unread} mensajes</b> sin leer. Hay <b>${s.scheduledPosts}</b> entradas programadas y <b>${s.draftPosts}</b> en borrador.`
+    : `${t('today.greeting')}, ${name}. You have <b>${s.newPrayers} new prayer requests</b> and <b>${s.unread} unread messages</b>. There are <b>${s.scheduledPosts}</b> scheduled posts and <b>${s.draftPosts}</b> in draft.`;
 
   return (
     <>
@@ -47,11 +89,43 @@ export function Today() {
         <p dangerouslySetInnerHTML={{ __html: brief }} />
       </div>
 
+      {/* Prayer requests lead. If any are waiting, this is the loudest thing
+          on the page and it stays loud until someone acts on it. */}
+      {s.newPrayers > 0 && (
+        <button className={`prayer-alert ${stale ? 'stale' : ''}`} onClick={() => nav('/prayer')}>
+          <span className="pa-ic"><span className="pa-pulse" /><Icon name="prayer" size={22} /></span>
+          <span className="pa-txt">
+            <b>
+              {lang === 'es'
+                ? `${s.newPrayers} petición${s.newPrayers > 1 ? 'es' : ''} de oración esperando`
+                : `${s.newPrayers} prayer request${s.newPrayers > 1 ? 's' : ''} waiting`}
+            </b>
+            <span className="pa-sub">
+              {stale
+                ? (lang === 'es'
+                    ? `La más antigua llegó ${waiting}. Avisa al equipo de oración.`
+                    : `The oldest arrived ${waiting}. Alert the prayer team.`)
+                : (lang === 'es'
+                    ? `La más reciente ${waiting}. Ábrelas y avisa al equipo de oración.`
+                    : `Most recent ${waiting}. Open them and alert the prayer team.`)}
+            </span>
+          </span>
+          <span className="pa-go"><Icon name="chevron" size={18} /></span>
+        </button>
+      )}
+
       <div className="grid g4" style={{ marginBottom: '1.6rem' }}>
-        <Stat k={t('inbox')} v={s.unread} d={t('stat.unread')} chip="warn" />
-        <Stat k={t('prayer')} v={s.newPrayers} d={t('stat.newprayers')} chip="info" />
-        <Stat k={lang === 'es' ? 'En cola' : 'Queued'} v={s.scheduled} d={t('stat.scheduled')} chip="gold" />
-        <Stat k={t('events')} v={s.liveEvents} d={t('stat.liveEvents')} chip="ok" />
+        <Stat
+          k={t('prayer')}
+          v={s.newPrayers}
+          d={waiting && s.newPrayers > 0 ? waiting : t('stat.newprayers')}
+          chip={s.newPrayers > 0 ? (stale ? 'warn' : 'info') : 'ok'}
+          urgent={s.newPrayers > 0}
+          go={() => nav('/prayer')}
+        />
+        <Stat k={t('inbox')} v={s.unread} d={t('stat.unread')} chip={s.unread > 0 ? 'warn' : 'ok'} go={() => nav('/inbox')} />
+        <Stat k={lang === 'es' ? 'Programadas' : 'Scheduled'} v={s.scheduledPosts} d={lang === 'es' ? 'entradas del blog' : 'blog posts'} chip="gold" go={() => nav('/autopilot')} />
+        <Stat k={t('events')} v={s.liveEvents} d={t('stat.liveEvents')} chip="ok" go={() => nav('/events')} />
       </div>
 
       <div className="view-head">
@@ -63,22 +137,26 @@ export function Today() {
 
       {hasActions ? (
         <div className="grid" style={{ gap: '.8rem' }}>
-          {s.scheduled > 0 && <Action ic="autopilot" color="warn"
-            title={lang === 'es' ? 'Revisa las publicaciones programadas' : 'Review scheduled posts'}
-            desc={lang === 'es' ? 'Se publican pronto a menos que las canceles.' : 'They publish soon unless you cancel.'}
-            btn={lang === 'es' ? 'Revisar' : 'Review'} go={() => nav('/autopilot')} />}
-          {s.draftEvents > 0 && <Action ic="events" color="info"
-            title={lang === 'es' ? `${s.draftEvents} evento en borrador` : `${s.draftEvents} event in draft`}
-            desc={lang === 'es' ? 'Publícalo para que aparezca en el sitio.' : 'Publish it to show on the site.'}
-            btn={lang === 'es' ? 'Ver eventos' : 'View events'} go={() => nav('/events')} />}
+          {s.newPrayers > 0 && <Action ic="prayer" color="info"
+            title={lang === 'es' ? `${s.newPrayers} peticiones de oración` : `${s.newPrayers} prayer requests`}
+            desc={lang === 'es' ? 'Ábrelas y pásalas al equipo de oración.' : 'Open them and pass them to the prayer team.'}
+            btn={lang === 'es' ? 'Ver peticiones' : 'View requests'} go={() => nav('/prayer')} />}
           {s.unread > 0 && <Action ic="inbox" color="gold"
             title={lang === 'es' ? `${s.unread} mensajes sin leer` : `${s.unread} unread messages`}
             desc={lang === 'es' ? 'Responde a quienes escribieron desde el sitio.' : 'Reply to people who wrote from the site.'}
             btn={lang === 'es' ? 'Ver mensajes' : 'View messages'} go={() => nav('/inbox')} />}
-          {s.newPrayers > 0 && <Action ic="prayer" color="info"
-            title={lang === 'es' ? `${s.newPrayers} peticiones de oración` : `${s.newPrayers} prayer requests`}
-            desc={lang === 'es' ? 'El equipo pastoral debe orar por ellas.' : 'The pastoral team should pray over these.'}
-            btn={lang === 'es' ? 'Ver peticiones' : 'View requests'} go={() => nav('/prayer')} />}
+          {s.scheduledPosts > 0 && <Action ic="autopilot" color="warn"
+            title={lang === 'es' ? 'Entradas programadas' : 'Scheduled posts'}
+            desc={lang === 'es' ? 'Publícalas cuando llegue el momento.' : 'Publish them when the time comes.'}
+            btn={lang === 'es' ? 'Revisar' : 'Review'} go={() => nav('/autopilot')} />}
+          {s.draftPosts > 0 && <Action ic="ai" color="info"
+            title={lang === 'es' ? `${s.draftPosts} entradas en borrador` : `${s.draftPosts} posts in draft`}
+            desc={lang === 'es' ? 'Termínalas y publícalas en Contra la Corriente.' : 'Finish them and publish to Against the Current.'}
+            btn={lang === 'es' ? 'Abrir estudio' : 'Open studio'} go={() => nav('/ai')} />}
+          {s.draftEvents > 0 && <Action ic="events" color="info"
+            title={lang === 'es' ? `${s.draftEvents} evento en borrador` : `${s.draftEvents} event in draft`}
+            desc={lang === 'es' ? 'Publícalo para que aparezca en el sitio.' : 'Publish it to show on the site.'}
+            btn={lang === 'es' ? 'Ver eventos' : 'View events'} go={() => nav('/events')} />}
         </div>
       ) : (
         <div className="card"><div className="empty">
@@ -91,9 +169,13 @@ export function Today() {
   );
 }
 
-function Stat({ k, v, d, chip }: { k: string; v: number; d: string; chip: string }) {
+function Stat({ k, v, d, chip, urgent, go }: {
+  k: string; v: number; d: string; chip: string; urgent?: boolean; go?: () => void;
+}) {
   return (
-    <div className="stat">
+    <div className={`stat ${urgent ? 'urgent' : ''} ${go ? 'clickable' : ''}`}
+      onClick={go} role={go ? 'button' : undefined} tabIndex={go ? 0 : undefined}
+      onKeyDown={go ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } } : undefined}>
       <div className="k">{k}</div>
       <div className="v">{v}</div>
       <div className="d"><span className={`chip ${chip}`}><span className="dot" />{d}</span></div>

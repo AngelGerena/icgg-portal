@@ -8,7 +8,7 @@ import { stripMarkdown } from '../../lib/markdown';
 import type { BlogPostRow, BusinessSettings } from '../../lib/types';
 
 /**
- * Blog Schedule — the publishing calendar for the Blog Studio.
+ * Blog Schedule — the publishing calendar for Contra la Corriente.
  *
  * Scheduled posts are held here until their publish_at passes. Nothing goes
  * live on its own: publishing is one tap, and the master AI switch pauses
@@ -106,7 +106,7 @@ export function Autopilot() {
     <>
       <div className="view-head">
         <div>
-          <span className="eyebrow">{lang === 'es' ? 'Calendario del blog' : 'Blog calendar'}</span>
+          <span className="eyebrow">{lang === 'es' ? 'Calendario de publicaciones' : 'Publishing calendar'}</span>
           <div className="sec-title">{lang === 'es' ? 'Programación' : 'Schedule'}</div>
         </div>
         <div className="vh-actions">
@@ -134,7 +134,7 @@ export function Autopilot() {
       {scheduled.length === 0
         ? <div className="card"><div className="empty"><Icon name="clock" size={44} stroke={1.3} className="ei" />
             <h4>{lang === 'es' ? 'Nada programado' : 'Nothing scheduled'}</h4>
-            <p>{lang === 'es' ? 'Programa una entrada desde el Estudio del Blog.' : 'Schedule a post from the Blog Studio.'}</p></div></div>
+            <p>{lang === 'es' ? 'Programa una entrada desde Contra la Corriente.' : 'Schedule a post from Against the Current.'}</p></div></div>
         : <div className="grid" style={{ gap: '.8rem' }}>{scheduled.map(card)}</div>}
 
       {drafts.length > 0 && (
@@ -152,7 +152,7 @@ export function Autopilot() {
       {rows.length === 0 && (
         <Empty icon="clock"
           title={lang === 'es' ? 'Nada en cola' : 'Nothing queued'}
-          sub={lang === 'es' ? 'Escribe una entrada en el Estudio del Blog y aparecerá aquí.' : 'Write a post in the Blog Studio and it will appear here.'} />
+          sub={lang === 'es' ? 'Escribe una entrada en Contra la Corriente y aparecerá aquí.' : 'Write a post in Against the Current and it will appear here.'} />
       )}
     </>
   );

@@ -5,7 +5,7 @@ import { useToast, Modal, Empty } from '../../components/UI';
 import { Icon } from '../../components/Icon';
 import { MediaPicker } from '../../components/MediaPicker';
 import { registerMedia } from '../../lib/mediaLibrary';
-import { logActivity } from '../../lib/activity';
+import { logActivity, trashRecord } from '../../lib/activity';
 import { renderMarkdown, readingMinutes, stripMarkdown, slugify } from '../../lib/markdown';
 import type { BlogPostRow } from '../../lib/types';
 
@@ -35,9 +35,11 @@ export function BlogStudio() {
 
   async function remove(p: BlogPostRow) {
     const ok = window.confirm(lang === 'es'
-      ? `¿Eliminar "${p.title_es}"? Esta acción no se puede deshacer.`
-      : `Delete "${p.title_es}"? This cannot be undone.`);
+      ? `¿Eliminar "${p.title_es}"? Podrás restaurarla desde el Registro de actividad.`
+      : `Delete "${p.title_es}"? You can restore it from the Activity Log.`);
     if (!ok) return;
+    // Keep a restorable copy before the row goes away.
+    await trashRecord('blog_posts', p.id, p.title_es, p as any);
     const { error } = await supabase.from('blog_posts').delete().eq('id', p.id);
     if (error) { push(error.message, 'err'); return; }
     await logActivity(lang === 'es' ? `Eliminó la entrada: ${p.title_es}` : `Deleted post: ${p.title_es}`, 'Blog', p.id);
@@ -56,7 +58,7 @@ export function BlogStudio() {
       <div className="view-head">
         <div>
           <span className="eyebrow">{lang === 'es' ? 'Escritura con IA' : 'AI-assisted writing'}</span>
-          <div className="sec-title">{lang === 'es' ? 'Estudio del Blog' : 'Blog Studio'}</div>
+          <div className="sec-title">{lang === 'es' ? 'Contra la Corriente' : 'Against the Current'}</div>
         </div>
         <div className="vh-actions">
           <button className="btn ghost" onClick={() => { setPrefill(null); setEditing('new'); }}>

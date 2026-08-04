@@ -37,13 +37,21 @@ export function AdminLayout() {
   const current = loc.pathname.replace('/', '') || 'today';
 
   useEffect(() => {
-    (async () => {
+    let alive = true;
+    const load = async () => {
       const [msgs, prayers] = await Promise.all([
         supabase.from('contact_messages').select('id', { count: 'exact', head: true }).eq('is_read', false),
         supabase.from('prayer_requests').select('id', { count: 'exact', head: true }).eq('status', 'new'),
       ]);
-      setBadges({ inbox: msgs.count ?? 0, prayer: prayers.count ?? 0 });
-    })();
+      if (alive) setBadges({ inbox: msgs.count ?? 0, prayer: prayers.count ?? 0 });
+    };
+    load();
+    // The portal stays open on a screen all day. Refresh so a prayer request
+    // that arrives mid-afternoon shows up without anyone reloading.
+    const id = setInterval(load, 60_000);
+    const onFocus = () => load();
+    window.addEventListener('focus', onFocus);
+    return () => { alive = false; clearInterval(id); window.removeEventListener('focus', onFocus); };
   }, [loc.pathname]);
 
   useEffect(() => { setOpen(false); }, [loc.pathname]);
