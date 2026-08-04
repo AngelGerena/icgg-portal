@@ -157,3 +157,31 @@ export interface AiRunRow {
   output_tokens: number | null;
   created_at: string;
 }
+
+export interface BlogPostRow {
+  id: string;
+  slug: string;
+  title_es: string;
+  title_en: string | null;
+  excerpt_es: string | null;
+  excerpt_en: string | null;
+  body_es: string | null;
+  body_en: string | null;
+  cover_url: string | null;
+  scripture_ref: string | null;
+  scripture_text_es: string | null;
+  scripture_text_en: string | null;
+  keywords: string[] | null;
+  author: string | null;
+  status: 'draft' | 'scheduled' | 'published';
+  featured: boolean;
+  reading_minutes: number | null;
+  meta_title_es: string | null;
+  meta_title_en: string | null;
+  meta_description_es: string | null;
+  meta_description_en: string | null;
+  publish_at: string | null;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+}

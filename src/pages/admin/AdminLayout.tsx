@@ -7,7 +7,7 @@ import { Icon } from '../../components/Icon';
 
 import { Today } from './Today';
 import { Events } from './Events';
-import { AIStudio } from './AIStudio';
+import { BlogStudio } from './BlogStudio';
 import { Autopilot } from './Autopilot';
 import { SiteEditor } from './SiteEditor';
 import { MediaLibrary } from './MediaLibrary';
@@ -118,7 +118,7 @@ export function AdminLayout() {
             <Route path="/" element={<Today />} />
             <Route path="/today" element={<Navigate to="/" replace />} />
             <Route path="/events" element={<Events />} />
-            <Route path="/ai" element={<AIStudio />} />
+            <Route path="/ai" element={<BlogStudio />} />
             <Route path="/autopilot" element={<Autopilot />} />
             <Route path="/site" element={<SiteEditor />} />
             <Route path="/media" element={<MediaLibrary />} />
