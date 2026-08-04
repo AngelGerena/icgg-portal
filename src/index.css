@@ -473,3 +473,23 @@ tr.rowlink:hover { background:var(--accent-soft); }
   /* Give tappable table rows / list items more vertical breathing room */
   table td, table th { padding-top: .9rem; padding-bottom: .9rem; }
 }
+
+/* ===== Media Picker (reuse library images in events/sermons) ===== */
+.mediapick-overlay { position: fixed; inset: 0; background: rgba(10,21,48,.72); backdrop-filter: blur(3px); z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 1.2rem; }
+.mediapick-box { background: var(--surface, #fff); border-radius: 16px; width: 100%; max-width: 720px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(10,21,48,.4); }
+.mediapick-head { display: flex; align-items: center; justify-content: space-between; padding: 1.1rem 1.3rem; border-bottom: 1px solid var(--line, #eee); }
+.mediapick-head b { font-family: 'Cormorant Garamond', serif; font-size: 1.35rem; }
+.mediapick-x { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line, #eee); background: var(--surface-card, #faf7f0); cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--muted, #889); }
+.mediapick-search { margin: 1rem 1.3rem .4rem; padding: .7rem 1rem; border: 1px solid var(--line, #ddd); border-radius: 10px; font-size: 16px; }
+.mediapick-empty { text-align: center; padding: 2.5rem 1.5rem; color: var(--muted, #889); }
+.mediapick-empty svg { color: var(--accent, #C9A961); margin-bottom: .7rem; }
+.mediapick-empty p { font-size: .9rem; line-height: 1.5; max-width: 360px; margin: 0 auto; }
+.mediapick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: .9rem; padding: 1rem 1.3rem 1.4rem; overflow-y: auto; }
+.mediapick-item { border: 1px solid var(--line, #eee); border-radius: 10px; overflow: hidden; background: none; cursor: pointer; padding: 0; transition: all .15s; text-align: left; }
+.mediapick-item:hover { border-color: var(--accent, #C9A961); transform: translateY(-2px); box-shadow: 0 8px 18px rgba(10,21,48,.14); }
+.mediapick-thumb { width: 100%; aspect-ratio: 1/1; background-size: cover; background-position: center; background-color: var(--surface-card, #f0ece3); }
+.mediapick-name { display: block; padding: .45rem .55rem; font-size: .72rem; color: var(--text, #333); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 720px) {
+  .mediapick-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+  .mediapick-search { font-size: 16px; }
+}

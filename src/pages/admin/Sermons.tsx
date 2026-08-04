@@ -5,6 +5,7 @@ import { useToast, Modal } from '../../components/UI';
 import { useT, pick } from '../../lib/i18n';
 import { Icon } from '../../components/Icon';
 import type { SermonRow } from '../../lib/types';
+import { MediaPicker } from '../../components/MediaPicker';
 
 export function Sermons() {
   const { lang } = useLang();
@@ -80,6 +81,7 @@ function SermonEditor({ row, lang, t, onClose, onSaved }: {
   });
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [pickLibrary, setPickLibrary] = useState(false);
   const set = (k: string, v: any) => setF(p => ({ ...p, [k]: v }));
 
   async function uploadCover(file: File) {
@@ -101,12 +103,27 @@ function SermonEditor({ row, lang, t, onClose, onSaved }: {
   }
 
   async function save() {
-    if (!f.title_es.trim()) return;
     setBusy(true);
-    const payload = { ...f, minutes: f.minutes ? Number(f.minutes) : null, preached_on: f.preached_on || null, status: 'published' as const };
-    const res = isNew ? await supabase.from('sermons').insert(payload) : await supabase.from('sermons').update(payload).eq('id', s!.id);
+    // Nothing is required. If the title is blank, give it a gentle placeholder
+    // so it still appears in the list to finish later (the DB needs some label).
+    const titleEs = f.title_es.trim() || (lang === 'es' ? 'Predicación sin título' : 'Untitled sermon');
+    const payload = {
+      ...f,
+      title_es: titleEs,
+      minutes: f.minutes ? Number(f.minutes) : null,
+      preached_on: f.preached_on || null,
+      status: 'published' as const,
+    };
+    const res = isNew
+      ? await supabase.from('sermons').insert(payload)
+      : await supabase.from('sermons').update(payload).eq('id', s!.id);
     setBusy(false);
-    onSaved(res.error ? res.error.message : (lang === 'es' ? 'Predicación guardada' : 'Sermon saved'));
+    if (res.error) {
+      // Surface the real reason instead of failing silently
+      onSaved((lang === 'es' ? 'Error al guardar: ' : 'Save error: ') + res.error.message);
+      return;
+    }
+    onSaved(lang === 'es' ? 'Predicación guardada' : 'Sermon saved');
   }
 
   return (
@@ -149,6 +166,10 @@ function SermonEditor({ row, lang, t, onClose, onSaved }: {
             <input type="file" accept="image/*" style={{ display: 'none' }}
               onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadCover(file); }} />
           </label>
+          <button type="button" className="btn ghost sm" style={{ marginLeft: '.5rem' }} onClick={() => setPickLibrary(true)}>
+            <Icon name="media" size={13} />{lang === 'es' ? 'De la biblioteca' : 'From library'}
+          </button>
+          {pickLibrary && <MediaPicker onPick={(url) => { set('cover_url', url); setPickLibrary(false); }} onClose={() => setPickLibrary(false)} />}
           {f.cover_url && (
             <button type="button" className="btn ghost sm" style={{ marginLeft: '.5rem' }}
               onClick={() => set('cover_url', '')}>

@@ -6,6 +6,7 @@ import { useToast, Modal, Empty } from '../../components/UI';
 import { Icon } from '../../components/Icon';
 import type { EventRow } from '../../lib/types';
 import { logActivity, trashRecord } from '../../lib/activity';
+import { MediaPicker } from '../../components/MediaPicker';
 
 export function Events() {
   const { lang } = useLang();
@@ -161,6 +162,7 @@ function EventEditor({ row, lang, t, onClose, onSaved }: {
   });
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [pickLibrary, setPickLibrary] = useState(false);
   const set = (k: string, v: any) => setF(p => ({ ...p, [k]: v }));
 
   async function uploadFlyer(file: File) {
@@ -248,7 +250,11 @@ function EventEditor({ row, lang, t, onClose, onSaved }: {
 
       <label style={{ fontSize: '.8rem', opacity: .7 }}>{lang === 'es' ? 'O pega una URL' : 'Or paste a URL'}</label>
       <input value={f.flyer_url} onChange={ev => set('flyer_url', ev.target.value)} placeholder="https://…" />
+      <button type="button" className="btn ghost sm" style={{ marginTop: '.5rem' }} onClick={() => setPickLibrary(true)}>
+        <Icon name="media" size={14} />{lang === 'es' ? 'Elegir de la biblioteca' : 'Choose from library'}
+      </button>
       {f.flyer_url && <div style={{ marginTop: '.6rem', aspectRatio: '16/9', borderRadius: 10, backgroundImage: `url('${f.flyer_url}')`, backgroundSize: 'cover', backgroundPosition: 'center' }} />}
+      {pickLibrary && <MediaPicker onPick={(url) => { set('flyer_url', url); setPickLibrary(false); }} onClose={() => setPickLibrary(false)} />}
 
       <div className="field-row">
         <div><label>{lang === 'es' ? 'Título (ES)' : 'Title (ES)'}</label><input value={f.title_es} onChange={ev => set('title_es', ev.target.value)} /></div>
