@@ -26,7 +26,7 @@ export function MediaLibrary() {
     if (up.error) { push(up.error.message, 'err'); setUploading(false); return; }
     const { data: pub } = supabase.storage.from('media').getPublicUrl(path);
     const { error } = await supabase.from('media').insert({
-      name: file.name, path, url: pub.publicUrl, size_bytes: file.size, tag: 'General',
+      name: file.name, path, url: pub.publicUrl, bucket: 'media', size_bytes: file.size, tag: 'General',
     });
     setUploading(false);
     if (error) { push(error.message, 'err'); return; }
@@ -40,6 +40,18 @@ export function MediaLibrary() {
   }
 
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [filter, setFilter] = useState<string>('all');
+
+  const tags = Array.from(new Set((rows ?? []).map(r => r.tag || 'General'))).sort();
+  const visible = (rows ?? []).filter(r => filter === 'all' || (r.tag || 'General') === filter);
+
+  function tagLabel(tag: string) {
+    if (lang !== 'es') return tag;
+    if (tag === 'Sermon') return 'Predicaciones';
+    if (tag === 'Event') return 'Eventos';
+    if (tag === 'General') return 'General';
+    return tag;
+  }
 
   async function handleDelete(m: MediaRow) {
     if (!m.url) return;
@@ -74,8 +86,13 @@ export function MediaLibrary() {
       }
       if (!ok) { setDeleting(null); return; }
 
-      // Remove the actual file from storage, then the library record
-      if (m.path) await supabase.storage.from('media').remove([m.path]);
+      // Remove the actual file from its OWN bucket, then the library record.
+      // Covers and flyers live outside the 'media' bucket, so never hardcode it.
+      if (m.path) {
+        const bucket = m.bucket || 'media';
+        const rm = await supabase.storage.from(bucket).remove([m.path]);
+        if (rm.error) { push(rm.error.message, 'err'); setDeleting(null); return; }
+      }
       const { error } = await supabase.from('media').delete().eq('id', m.id);
       if (error) { push(error.message, 'err'); setDeleting(null); return; }
       push(lang === 'es' ? 'Imagen eliminada' : 'Image deleted', 'ok');
@@ -103,10 +120,32 @@ export function MediaLibrary() {
         </div>
       </div>
 
+      {rows && rows.length > 0 && tags.length > 1 && (
+        <div className="vh-actions" style={{ marginBottom: '.75rem', flexWrap: 'wrap', gap: '.4rem' }}>
+          <button
+            className={`chip${filter === 'all' ? ' gold' : ''}`}
+            style={{ cursor: 'pointer' }}
+            onClick={() => setFilter('all')}
+          >
+            {lang === 'es' ? 'Todo' : 'All'} ({rows.length})
+          </button>
+          {tags.map(tg => (
+            <button
+              key={tg}
+              className={`chip${filter === tg ? ' gold' : ''}`}
+              style={{ cursor: 'pointer' }}
+              onClick={() => setFilter(tg)}
+            >
+              {tagLabel(tg)} ({rows.filter(r => (r.tag || 'General') === tg).length})
+            </button>
+          ))}
+        </div>
+      )}
+
       {!rows ? <div className="center-load"><div className="spin" /></div>
         : rows.length === 0 ? <Empty icon="media" title={lang === 'es' ? 'Sin archivos' : 'No files'} sub={lang === 'es' ? 'Sube fotos y flyers para usarlos en el sitio.' : 'Upload photos and flyers to use on the site.'} />
         : <div className="grid g4">
-          {rows.map(m => (
+          {visible.map(m => (
             <div key={m.id} className="card media-item">
               <div className="media-thumb" style={{ backgroundImage: m.url ? `url('${m.url}')` : 'none' }}>
                 {m.tag && <span className="chip gold" style={{ position: 'absolute', top: '.5rem', left: '.5rem' }}>{m.tag}</span>}

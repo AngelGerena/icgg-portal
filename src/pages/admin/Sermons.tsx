@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { registerMedia } from '../../lib/mediaLibrary';
 import { useLang } from '../../lib/providers';
 import { useToast, Modal } from '../../components/UI';
 import { useT, pick } from '../../lib/i18n';
@@ -63,13 +64,16 @@ export function Sermons() {
 
       {editing && <SermonEditor row={editing} lang={lang} t={t}
         onClose={() => setEditing(null)}
-        onSaved={(msg) => { setEditing(null); push(msg, 'ok'); load(); }} />}
+        onSaved={(msg) => { setEditing(null); push(msg, 'ok'); load(); }}
+        onNotify={(msg, kind) => push(msg, kind ?? 'err')} />}
     </>
   );
 }
 
-function SermonEditor({ row, lang, t, onClose, onSaved }: {
-  row: SermonRow | 'new'; lang: string; t: (k: string) => string; onClose: () => void; onSaved: (m: string) => void;
+function SermonEditor({ row, lang, t, onClose, onSaved, onNotify }: {
+  row: SermonRow | 'new'; lang: string; t: (k: string) => string; onClose: () => void;
+  onSaved: (m: string) => void;
+  onNotify: (m: string, kind?: 'ok' | 'err') => void;
 }) {
   const isNew = row === 'new';
   const s = isNew ? null : row;
@@ -86,7 +90,10 @@ function SermonEditor({ row, lang, t, onClose, onSaved }: {
 
   async function uploadCover(file: File) {
     if (!file) return;
-    if (!file.type.startsWith('image/')) return;
+    if (!file.type.startsWith('image/')) {
+      onNotify(lang === 'es' ? 'El archivo debe ser una imagen' : 'File must be an image');
+      return;
+    }
     setUploading(true);
     try {
       const ext = file.name.split('.').pop() || 'jpg';
@@ -94,9 +101,26 @@ function SermonEditor({ row, lang, t, onClose, onSaved }: {
       const { error: upErr } = await supabase.storage
         .from('sermon-covers')
         .upload(path, file, { cacheControl: '3600', upsert: true });
-      if (upErr) { setUploading(false); return; }
+      if (upErr) {
+        // Surface the real reason instead of failing silently
+        onNotify((lang === 'es' ? 'Error al subir la portada: ' : 'Cover upload error: ') + upErr.message);
+        return;
+      }
       const { data } = supabase.storage.from('sermon-covers').getPublicUrl(path);
       set('cover_url', data.publicUrl);
+
+      // Register in the shared Media Library so this cover is reusable later.
+      // Non-fatal by design: the cover is already uploaded and set on the form.
+      await registerMedia({
+        bucket: 'sermon-covers',
+        path,
+        url: data.publicUrl,
+        name: file.name,
+        sizeBytes: file.size,
+        tag: 'Sermon',
+      });
+    } catch (err: any) {
+      onNotify(err?.message || 'Upload failed');
     } finally {
       setUploading(false);
     }
@@ -120,7 +144,7 @@ function SermonEditor({ row, lang, t, onClose, onSaved }: {
     setBusy(false);
     if (res.error) {
       // Surface the real reason instead of failing silently
-      onSaved((lang === 'es' ? 'Error al guardar: ' : 'Save error: ') + res.error.message);
+      onNotify((lang === 'es' ? 'Error al guardar: ' : 'Save error: ') + res.error.message);
       return;
     }
     onSaved(lang === 'es' ? 'Predicación guardada' : 'Sermon saved');

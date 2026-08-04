@@ -78,6 +78,7 @@ export interface MediaRow {
   id: string;
   name: string;
   path: string;
+  bucket: string | null;
   url: string | null;
   tag: string | null;
   size_bytes: number | null;

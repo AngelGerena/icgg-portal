@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { registerMedia } from '../../lib/mediaLibrary';
 import { useLang } from '../../lib/providers';
 import { useT, pick } from '../../lib/i18n';
 import { useToast, Modal, Empty } from '../../components/UI';
@@ -67,7 +68,8 @@ export function Events() {
 
       {editing && <EventEditor row={editing} lang={lang} t={t}
         onClose={() => setEditing(null)}
-        onSaved={(msg) => { setEditing(null); push(msg, 'ok'); load(); }} />}
+        onSaved={(msg) => { setEditing(null); push(msg, 'ok'); load(); }}
+        onNotify={(msg, kind) => push(msg, kind ?? 'err')} />}
 
       {sharing && <ShareSheet e={sharing} lang={lang} t={t} onClose={() => setSharing(null)} push={push} />}
     </>
@@ -147,9 +149,10 @@ function CalendarView({ rows, lang, onPick }: { rows: EventRow[]; lang: string; 
   );
 }
 
-function EventEditor({ row, lang, t, onClose, onSaved }: {
+function EventEditor({ row, lang, t, onClose, onSaved, onNotify }: {
   row: EventRow | 'new'; lang: string; t: (k: string) => string;
   onClose: () => void; onSaved: (msg: string) => void;
+  onNotify: (msg: string, kind?: 'ok' | 'err') => void;
 }) {
   const isNew = row === 'new';
   const e = isNew ? null : row;
@@ -168,7 +171,7 @@ function EventEditor({ row, lang, t, onClose, onSaved }: {
   async function uploadFlyer(file: File) {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      onSaved(lang === 'es' ? 'El archivo debe ser una imagen' : 'File must be an image');
+      onNotify(lang === 'es' ? 'El archivo debe ser una imagen' : 'File must be an image');
       return;
     }
     setUploading(true);
@@ -178,11 +181,22 @@ function EventEditor({ row, lang, t, onClose, onSaved }: {
       const { error: upErr } = await supabase.storage
         .from('event-flyers')
         .upload(path, file, { cacheControl: '3600', upsert: false });
-      if (upErr) { onSaved(upErr.message); setUploading(false); return; }
+      if (upErr) { onNotify(upErr.message); setUploading(false); return; }
       const { data } = supabase.storage.from('event-flyers').getPublicUrl(path);
       set('flyer_url', data.publicUrl);
+
+      // Register in the shared Media Library so this flyer is reusable later.
+      // Non-fatal by design: the flyer is already uploaded and set on the form.
+      await registerMedia({
+        bucket: 'event-flyers',
+        path,
+        url: data.publicUrl,
+        name: file.name,
+        sizeBytes: file.size,
+        tag: 'Event',
+      });
     } catch (err: any) {
-      onSaved(err?.message || 'Upload failed');
+      onNotify(err?.message || 'Upload failed');
     } finally {
       setUploading(false);
     }
@@ -196,7 +210,7 @@ function EventEditor({ row, lang, t, onClose, onSaved }: {
       ? await supabase.from('events').insert(payload)
       : await supabase.from('events').update(payload).eq('id', e!.id);
     setBusy(false);
-    if (res.error) { onSaved(res.error.message); return; }
+    if (res.error) { onNotify(res.error.message); return; }
     const title = f.title_es || 'evento';
     await logActivity(
       isNew
