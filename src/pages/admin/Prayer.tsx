@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { logActivity } from '../../lib/activity';
 import { useLang } from '../../lib/providers';
 import { useToast, Empty } from '../../components/UI';
 import { Icon } from '../../components/Icon';
@@ -17,7 +18,23 @@ export function Prayer() {
   useEffect(() => { load(); }, []);
 
   async function setStatus(id: string, status: PrayerRow['status']) {
-    await supabase.from('prayer_requests').update({ status }).eq('id', id);
+    const { error } = await supabase.from('prayer_requests').update({ status }).eq('id', id);
+    if (error) { push(error.message, 'err'); return; }
+
+    // Accountability without exposure: we record WHO acted and WHEN, never the
+    // requester's name or the content of their petition. The record id is kept
+    // so an action can be traced back if it ever needs to be, but the log
+    // itself reveals nothing pastoral.
+    const label =
+      status === 'praying'
+        ? (lang === 'es' ? 'Tomó una petición para orar' : 'Took a request to pray over')
+        : status === 'answered'
+        ? (lang === 'es' ? 'Marcó una petición como respondida' : 'Marked a request as answered')
+        : status === 'archived'
+        ? (lang === 'es' ? 'Archivó una petición' : 'Archived a request')
+        : (lang === 'es' ? 'Actualizó una petición' : 'Updated a request');
+    await logActivity(label, 'Prayer', id);
+
     push(status === 'praying' ? (lang === 'es' ? 'Añadida a la cadena de oración' : 'Added to the prayer chain') : (lang === 'es' ? 'Marcada como respondida' : 'Marked answered'), 'ok');
     load();
   }

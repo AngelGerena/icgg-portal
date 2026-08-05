@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { logActivity } from '../../lib/activity';
 import { useLang } from '../../lib/providers';
 import { useToast, Toggle } from '../../components/UI';
 import { Icon } from '../../components/Icon';
@@ -43,6 +44,12 @@ export function Settings() {
     const next = !s.ai_enabled;
     setS({ ...s, ai_enabled: next });
     await supabase.from('business_settings').update({ ai_enabled: next }).eq('id', 1);
+    await logActivity(
+      next
+        ? (lang === 'es' ? 'Activó la IA en el portal' : 'Enabled AI portal-wide')
+        : (lang === 'es' ? 'Apagó la IA en el portal' : 'Paused AI portal-wide'),
+      'Settings'
+    );
     push(next ? (lang === 'es' ? 'IA activada' : 'AI enabled') : (lang === 'es' ? 'IA en pausa' : 'AI paused'), 'ok');
   }
 

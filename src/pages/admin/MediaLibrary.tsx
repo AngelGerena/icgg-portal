@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { logActivity } from '../../lib/activity';
 import { useLang } from '../../lib/providers';
 import { useToast, Empty } from '../../components/UI';
 import { Icon } from '../../components/Icon';
@@ -95,6 +96,10 @@ export function MediaLibrary() {
       }
       const { error } = await supabase.from('media').delete().eq('id', m.id);
       if (error) { push(error.message, 'err'); setDeleting(null); return; }
+      await logActivity(
+        lang === 'es' ? `Eliminó la imagen: ${m.name}` : `Deleted image: ${m.name}`,
+        'Media Library', m.id
+      );
       push(lang === 'es' ? 'Imagen eliminada' : 'Image deleted', 'ok');
       load();
     } catch (err: any) {

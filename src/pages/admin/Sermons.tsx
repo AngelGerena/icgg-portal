@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { logActivity } from '../../lib/activity';
 import { registerMedia } from '../../lib/mediaLibrary';
 import { useLang } from '../../lib/providers';
 import { useToast, Modal } from '../../components/UI';
@@ -141,6 +142,15 @@ function SermonEditor({ row, lang, t, onClose, onSaved, onNotify }: {
     const res = isNew
       ? await supabase.from('sermons').insert(payload)
       : await supabase.from('sermons').update(payload).eq('id', s!.id);
+
+    if (!res.error) {
+      await logActivity(
+        isNew
+          ? (lang === 'es' ? `Creó la predicación: ${payload.title_es}` : `Created sermon: ${payload.title_es}`)
+          : (lang === 'es' ? `Editó la predicación: ${payload.title_es}` : `Edited sermon: ${payload.title_es}`),
+        'Sermons', s?.id
+      );
+    }
     setBusy(false);
     if (res.error) {
       // Surface the real reason instead of failing silently

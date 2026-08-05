@@ -37,6 +37,12 @@ export function Autopilot() {
     const next = !ai;
     setAi(next);
     await supabase.from('business_settings').update({ ai_enabled: next }).eq('id', 1);
+    await logActivity(
+      next
+        ? (lang === 'es' ? 'Activó la IA en el portal' : 'Enabled AI portal-wide')
+        : (lang === 'es' ? 'Apagó la IA en el portal' : 'Paused AI portal-wide'),
+      'Settings'
+    );
     push(next ? (lang === 'es' ? 'IA activada' : 'AI enabled') : (lang === 'es' ? 'Toda la IA en pausa' : 'All AI paused'), 'ok');
   }
 
@@ -60,6 +66,10 @@ export function Autopilot() {
       .update({ status: 'draft', publish_at: null }).eq('id', p.id);
     setBusy(null);
     if (error) { push(error.message, 'err'); return; }
+    await logActivity(
+      lang === 'es' ? `Quitó la programación de: ${p.title_es}` : `Unscheduled: ${p.title_es}`,
+      'Blog', p.id
+    );
     push(lang === 'es' ? 'Devuelta a borrador' : 'Moved back to draft', 'ok');
     load();
   }
