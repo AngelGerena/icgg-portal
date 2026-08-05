@@ -61,6 +61,8 @@ export interface PrayerRow {
   consent: boolean;
   status: 'new' | 'praying' | 'answered' | 'archived';
   created_at: string;
+  handled_by: string | null;
+  handled_at: string | null;
 }
 
 export interface MessageRow {
