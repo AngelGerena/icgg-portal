@@ -661,3 +661,107 @@ textarea.blog-body {
   border-top: 1px solid var(--line);
   font-size: .76rem; color: var(--muted); font-style: italic;
 }
+
+/* ---------- Printable prayer report (super admin) ----------
+   Hidden entirely on screen. When the browser prints, the app chrome is
+   suppressed and only this report renders, so "Export PDF" is really
+   "print to PDF" — no extra library, no bundle weight. */
+.prayer-report { display: none; }
+
+@media print {
+  /* Hide the application shell */
+  .side, .side-nav, .side-foot, .topbar, .view-head, .notice,
+  .vh-actions, .chip, .card, .empty, .center-load, .toast, .modal-back {
+    display: none !important;
+  }
+
+  html, body, #root {
+    background: #fff !important;
+    color: #111 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .app, .main, .content { display: block !important; margin: 0 !important; padding: 0 !important; }
+
+  .prayer-report {
+    display: block !important;
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #111;
+    padding: 0;
+  }
+
+  .pr-head { border-bottom: 2px solid #1C2640; padding-bottom: .5rem; margin-bottom: .5rem; }
+  .pr-church {
+    font-size: 9pt; letter-spacing: .12em; text-transform: uppercase;
+    color: #8a6d1f; font-weight: 700; margin-bottom: .15rem;
+  }
+  .pr-head h1 { font-size: 17pt; margin: 0 0 .2rem; }
+  .pr-sub { font-size: 8.5pt; color: #555; }
+
+  .pr-confidential {
+    font-size: 8pt; font-weight: 700; letter-spacing: .04em;
+    color: #8a1f1f; border: 1px solid #d9b3b3; background: #fdf5f5;
+    padding: .35rem .5rem; margin: .6rem 0 1rem;
+  }
+
+  .pr-item {
+    padding: .5rem 0 .55rem;
+    border-bottom: 1px solid #ddd;
+    /* never split one person's petition across two pages */
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .pr-item-head { font-size: 11pt; display: flex; gap: .4rem; align-items: baseline; }
+  .pr-n { color: #999; font-size: 9pt; }
+  .pr-status {
+    margin-left: auto; font-size: 8pt; text-transform: uppercase;
+    letter-spacing: .06em; color: #555;
+  }
+  .pr-meta { font-size: 8pt; color: #666; margin: .12rem 0 .3rem; }
+  .pr-body { font-size: 10pt; line-height: 1.5; margin: 0 0 .3rem; white-space: pre-wrap; }
+  .pr-handled { font-size: 8.5pt; color: #1f6b3a; }
+
+  .pr-foot {
+    margin-top: 1rem; padding-top: .4rem; border-top: 1px solid #ddd;
+    font-size: 8pt; color: #777; text-align: center;
+  }
+
+  @page { margin: 14mm; }
+}
+
+/* ---------- Episode reordering ---------- */
+.ord-cell { display: flex; align-items: center; gap: .3rem; }
+
+.ord-handle {
+  display: inline-flex; flex-direction: column; justify-content: center; gap: 3px;
+  width: 22px; height: 34px; padding: 0 5px;
+  cursor: grab; flex-shrink: 0; border-radius: 5px;
+}
+.ord-handle:active { cursor: grabbing; }
+.ord-handle:hover { background: var(--line); }
+.ord-handle span {
+  display: block; height: 2px; width: 100%;
+  background: var(--muted); border-radius: 2px; opacity: .6;
+}
+
+.ord-arrows { display: inline-flex; flex-direction: column; gap: 1px; }
+.ord-btn {
+  width: 26px; height: 20px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid transparent; background: transparent;
+  color: var(--muted); border-radius: 4px; cursor: pointer;
+}
+.ord-btn:hover:not(:disabled) { border-color: var(--line); color: var(--fg); }
+.ord-btn:disabled { opacity: .28; cursor: default; }
+
+.ord-row.is-dragging { opacity: .45; }
+.ord-row.is-over td { box-shadow: inset 0 2px 0 0 var(--accent); }
+
+/* On touch, HTML5 drag does not fire — the arrows are the real control there,
+   so give them proper tap targets and hide the handle. */
+@media (hover: none) and (pointer: coarse) {
+  .ord-handle { display: none; }
+  .ord-btn { width: 40px; height: 34px; border-color: var(--line); }
+  .ord-arrows { gap: 4px; }
+}

@@ -15,12 +15,64 @@ export function Podcast() {
   const { push } = useToast();
   const [rows, setRows] = useState<EpisodeRow[] | null>(null);
   const [editing, setEditing] = useState<EpisodeRow | 'new' | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  /**
+   * Persist a new running order. Writes sort_order for every row so the
+   * sequence is explicit rather than inferred, and reloads on failure so the
+   * screen can never disagree with the database.
+   */
+  async function persistOrder(next: EpisodeRow[]) {
+    setRows(next); // optimistic: the drag should feel instant
+    setSaving(true);
+    const results = await Promise.all(
+      next.map((e, i) =>
+        supabase.from('podcast_episodes').update({ sort_order: i + 1 }).eq('id', e.id)
+      )
+    );
+    setSaving(false);
+    const failed = results.find(r => r.error);
+    if (failed) {
+      push(failed.error!.message, 'err');
+      load();
+      return;
+    }
+    await logActivity(
+      lang === 'es' ? 'Reordenó los episodios del podcast' : 'Reordered podcast episodes',
+      'Podcast'
+    );
+    push(lang === 'es' ? 'Orden guardado' : 'Order saved', 'ok');
+  }
+
+  function moveBy(index: number, delta: number) {
+    if (!rows) return;
+    const target = index + delta;
+    if (target < 0 || target >= rows.length) return;
+    const next = [...rows];
+    const [item] = next.splice(index, 1);
+    next.splice(target, 0, item);
+    persistOrder(next);
+  }
+
+  function handleDrop(targetId: string) {
+    if (!rows || !dragId || dragId === targetId) { setDragId(null); setOverId(null); return; }
+    const from = rows.findIndex(r => r.id === dragId);
+    const to = rows.findIndex(r => r.id === targetId);
+    if (from < 0 || to < 0) { setDragId(null); setOverId(null); return; }
+    const next = [...rows];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    setDragId(null); setOverId(null);
+    persistOrder(next);
+  }
 
   async function load() {
     const { data } = await supabase
       .from('podcast_episodes')
       .select('*')
-      .order('published_on', { ascending: false, nullsFirst: false })
+      .order('sort_order', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
     setRows((data as EpisodeRow[]) ?? []);
   }
@@ -60,15 +112,57 @@ export function Podcast() {
           <div className="card">
             <table>
               <thead><tr>
-                <th style={{ width: 46 }}>#</th>
+                <th style={{ width: 76 }}>{lang === 'es' ? 'Orden' : 'Order'}</th>
+                <th style={{ width: 40 }}>#</th>
                 <th>{lang === 'es' ? 'Título' : 'Title'}</th>
                 <th>{lang === 'es' ? 'Invitado' : 'Guest'}</th>
                 <th>{lang === 'es' ? 'Fecha' : 'Date'}</th>
                 <th></th>
               </tr></thead>
               <tbody>
-                {rows.map(e => (
-                  <tr key={e.id} className="rowlink" onClick={() => setEditing(e)}>
+                {rows.map((e, i) => (
+                  <tr
+                    key={e.id}
+                    className={`rowlink ord-row ${dragId === e.id ? 'is-dragging' : ''} ${overId === e.id ? 'is-over' : ''}`}
+                    onClick={() => setEditing(e)}
+                    onDragOver={(ev) => { ev.preventDefault(); setOverId(e.id); }}
+                    onDragLeave={() => setOverId(o => (o === e.id ? null : o))}
+                    onDrop={(ev) => { ev.preventDefault(); handleDrop(e.id); }}
+                  >
+                    <td onClick={(ev) => ev.stopPropagation()}>
+                      <div className="ord-cell">
+                        <span
+                          className="ord-handle"
+                          draggable
+                          onDragStart={() => setDragId(e.id)}
+                          onDragEnd={() => { setDragId(null); setOverId(null); }}
+                          title={lang === 'es' ? 'Arrastrar para reordenar' : 'Drag to reorder'}
+                          aria-hidden="true"
+                        >
+                          <span /><span /><span />
+                        </span>
+                        <span className="ord-arrows">
+                          <button
+                            type="button"
+                            className="ord-btn"
+                            disabled={i === 0 || saving}
+                            onClick={() => moveBy(i, -1)}
+                            aria-label={lang === 'es' ? 'Subir' : 'Move up'}
+                          >
+                            <Icon name="chevron" size={13} style={{ transform: 'rotate(180deg)' }} />
+                          </button>
+                          <button
+                            type="button"
+                            className="ord-btn"
+                            disabled={i === rows.length - 1 || saving}
+                            onClick={() => moveBy(i, 1)}
+                            aria-label={lang === 'es' ? 'Bajar' : 'Move down'}
+                          >
+                            <Icon name="chevron" size={13} />
+                          </button>
+                        </span>
+                      </div>
+                    </td>
                     <td className="muted">{e.episode_no ?? '—'}</td>
                     <td>
                       <b>{pick(e, 'title', lang as any)}</b>
@@ -177,6 +271,7 @@ function EpisodeEditor({ row, nextNo, lang, onClose, onSaved, onNotify, onDelete
     setBusy(true);
     const payload = {
       episode_no: f.episode_no.trim() ? parseInt(f.episode_no, 10) : null,
+      ...(isNew ? { sort_order: 0 } : {}),
       title_es: f.title_es.trim() || 'Episodio sin título',
       title_en: f.title_en.trim() || null,
       description_es: f.description_es.trim() || null,

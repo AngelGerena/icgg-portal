@@ -174,6 +174,7 @@ export interface BlogPostRow {
 export interface EpisodeRow {
   id: string;
   episode_no: number | null;
+  sort_order: number | null;
   title_es: string;
   title_en: string | null;
   description_es: string | null;

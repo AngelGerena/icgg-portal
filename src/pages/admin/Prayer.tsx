@@ -109,6 +109,13 @@ export function Prayer() {
           <span className="eyebrow">{lang === 'es' ? 'Confidencial' : 'Confidential'}</span>
           <div className="sec-title">{lang === 'es' ? 'Peticiones de oración' : 'Prayer requests'}</div>
         </div>
+        {admin?.is_super_admin && all.length > 0 && (
+          <div className="vh-actions">
+            <button className="btn ghost" onClick={() => window.print()}>
+              <Icon name="upload" size={15} />{lang === 'es' ? 'Exportar PDF' : 'Export PDF'}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="notice protected" style={{ marginBottom: '1.2rem' }}>
@@ -198,6 +205,58 @@ export function Prayer() {
             ))}
           </div>
         )}
+      {admin?.is_super_admin && (
+        <div className="prayer-report" aria-hidden="true">
+          <div className="pr-head">
+            <div className="pr-church">Iglesia Cristiana Gracia y Gloria</div>
+            <h1>{lang === 'es' ? 'Informe de peticiones de oración' : 'Prayer request report'}</h1>
+            <div className="pr-sub">
+              {lang === 'es' ? 'Filtro' : 'Filter'}: {lang === 'es'
+                ? FILTERS.find(f => f.key === filter)?.es
+                : FILTERS.find(f => f.key === filter)?.en}
+              {' · '}
+              {visible.length} {lang === 'es' ? 'peticiones' : 'requests'}
+              {' · '}
+              {lang === 'es' ? 'Generado' : 'Generated'} {fmtFull(new Date().toISOString())}
+              {' · '}
+              {lang === 'es' ? 'por' : 'by'} {actor}
+            </div>
+          </div>
+
+          <div className="pr-confidential">
+            {lang === 'es'
+              ? 'CONFIDENCIAL — Contiene peticiones pastorales. Manejar con discreción y no reenviar.'
+              : 'CONFIDENTIAL — Contains pastoral requests. Handle with discretion; do not forward.'}
+          </div>
+
+          {visible.map((p, i) => (
+            <div key={p.id} className="pr-item">
+              <div className="pr-item-head">
+                <span className="pr-n">{i + 1}.</span>
+                <b>{p.name || (lang === 'es' ? 'Anónimo' : 'Anonymous')}</b>
+                <span className="pr-status">{statusLabel(p.status)}</span>
+              </div>
+              <div className="pr-meta">
+                {lang === 'es' ? 'Enviada' : 'Submitted'}: {fmtFull(p.created_at)}
+                {p.contact ? ` · ${p.contact}` : ''}
+                {p.is_shared ? ` · ${lang === 'es' ? 'Autorizó compartir' : 'Consented to share'}` : ''}
+              </div>
+              <p className="pr-body">{p.body}</p>
+              <div className="pr-handled">
+                {p.handled_by
+                  ? `${lang === 'es' ? 'Atendida por' : 'Handled by'}: ${p.handled_by}${p.handled_at ? ` · ${fmtFull(p.handled_at)}` : ''}`
+                  : (lang === 'es' ? 'Sin atender' : 'Not yet handled')}
+              </div>
+            </div>
+          ))}
+
+          <div className="pr-foot">
+            {lang === 'es'
+              ? 'Iglesia Cristiana Gracia y Gloria · Sanford, Florida'
+              : 'Iglesia Cristiana Gracia y Gloria · Sanford, Florida'}
+          </div>
+        </div>
+      )}
     </>
   );
 }
